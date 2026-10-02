@@ -1,8 +1,12 @@
 import os
 import subprocess
 import tempfile
+from dotenv import load_dotenv  # Added to load local .env file
 import streamlit as st
 from openai import OpenAI
+
+# Load local environment variables
+load_dotenv()
 
 # Page Configuration
 st.set_page_config(
@@ -15,26 +19,28 @@ st.markdown(
     " runs your code against them, and pinpoints where you fail!"
 )
 
-# Initialize OpenAI / Groq client
-# On Streamlit Cloud, you can store your API key in st.secrets["GROQ_API_KEY"]
-# Locally, it will fall back to os.environ or your .env file
+# Safe API key retrieval for both local and cloud environments
 api_key = None
-if "GROQ_API_KEY" in st.secrets:
-  api_key = st.secrets["GROQ_API_KEY"]
-elif "OPENAI_API_KEY" in st.secrets:
-  api_key = st.secrets["OPENAI_API_KEY"]
-else:
-  # Fallback to environment variables
+try:
+  if "GROQ_API_KEY" in st.secrets:
+    api_key = st.secrets["GROQ_API_KEY"]
+  elif "OPENAI_API_KEY" in st.secrets:
+    api_key = st.secrets["OPENAI_API_KEY"]
+except Exception:
+  pass
+
+# Fallback to environment variables / .env if not found in secrets
+if not api_key:
   api_key = os.environ.get("GROQ_API_KEY") or os.environ.get("OPENAI_API_KEY")
 
 # Choose client setup based on available keys
-if api_key and "groq" in api_key.lower():
+# Choose client setup based on available keys
+if api_key and api_key.startswith("gsk_"):
   client = OpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
-  MODEL_NAME = "openai/gpt-oss-20b"
+  MODEL_NAME = "openai/gpt-oss-20b"  # Reliable Groq model name
 else:
   client = OpenAI(api_key=api_key)
   MODEL_NAME = "gpt-4o-mini"
-
 # Input Section Form
 with st.form("code_form"):
   problem_description = st.text_area(
